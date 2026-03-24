@@ -41,7 +41,7 @@
 </head>
 <body oncontextmenu="return false" ondragstart="return false">
 <div class="wrapper" id="wrapper">
-  <video id="vid" preload="none" playsinline controlslist="nodownload noremoteplayback" disablepictureinpicture></video>
+  <video id="vid" playsinline controlslist="nodownload noremoteplayback" disablepictureinpicture></video>
   <div class="play-big" id="bigPlay">
     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
     <span>Click to play</span>
@@ -91,6 +91,13 @@
 
   let started = false;
 
+  // Load src immediately with metadata — browser shows first frame as thumbnail
+  vid.preload = 'metadata';
+  vid.src = src;
+  vid.addEventListener('loadedmetadata', function() {
+    vid.currentTime = 0.5;
+  }, { once: true });
+
   function fmt(s) {
     if (isNaN(s)) return '0:00';
     return Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2,'0');
@@ -98,9 +105,9 @@
 
   function toggle() {
     if (!started) {
-      vid.src = src;
       started = true;
       bigPlay.classList.add('hidden');
+      vid.currentTime = 0;
       vid.play();
       return;
     }

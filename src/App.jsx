@@ -41,6 +41,13 @@ const VIDEOS = [
     src: 'https://videoforinteractivedemons.s3.ap-south-1.amazonaws.com/amway-review/Babita+Chithung+%26+Mimi+Wungnaoyo.mp4',
     language: 'Manipuri',
   },
+  {
+    id: 3,
+    title: 'Brightcove Video',
+    src: 'https://players.brightcove.net/1437117781001/default_default/index.html?videoId=6391518383112',
+    language: 'English',
+    type: 'brightcove',
+  },
 ]
 
 function App() {
@@ -185,14 +192,24 @@ function App() {
                 </div>
 
                 <div className="aspect-video rounded-xl border border-[#E4E4E4] overflow-hidden shadow-sm bg-black">
-                  <iframe
-                    ref={(el) => (iframeRefs.current[video.id] = el)}
-                    src={`/player.html?src=${encodeURIComponent(video.src)}&id=${video.id}`}
-                    className="w-full h-full border-0"
-                    allow="fullscreen"
-                    sandbox="allow-scripts allow-same-origin"
-                    title={video.title}
-                  />
+                  {video.type === 'brightcove' ? (
+                    <iframe
+                      src={video.src}
+                      className="w-full h-full border-0"
+                      allowFullScreen
+                      allow="encrypted-media"
+                      title={video.title}
+                    />
+                  ) : (
+                    <iframe
+                      ref={(el) => (iframeRefs.current[video.id] = el)}
+                      src={`/player.html?src=${encodeURIComponent(video.src)}&id=${video.id}`}
+                      className="w-full h-full border-0"
+                      allow="fullscreen"
+                      sandbox="allow-scripts allow-same-origin"
+                      title={video.title}
+                    />
+                  )}
                 </div>
 
                 <p className="text-xs text-[#999] truncate">
