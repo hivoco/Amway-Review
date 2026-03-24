@@ -32,13 +32,13 @@ const VIDEOS = [
   {
     id: 1,
     title: 'Asiya Rehmat & Waqar Afzal',
-    src: '/Asiya Rehmat & Waqar Afzal.mp4',
+    src: 'https://videoforinteractivedemons.s3.ap-south-1.amazonaws.com/amway-review/Asiya+Rehmat+%26+Waqar+Afzal.mp4',
     language: 'English',
   },
   {
     id: 2,
     title: 'Babita Chithung & Mimi Wungnaoyo',
-    src: '/Babita Chithung & Mimi Wungnaoyo.mp4',
+    src: 'https://videoforinteractivedemons.s3.ap-south-1.amazonaws.com/amway-review/Babita+Chithung+%26+Mimi+Wungnaoyo.mp4',
     language: 'Manipuri',
   },
 ]
@@ -52,30 +52,12 @@ function formatTime(seconds) {
 
 function ProtectedVideo({ video, videoRef, otherRef }) {
   const [isPlaying, setIsPlaying] = useState(false)
+  const [hasStarted, setHasStarted] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(1)
   const [isMuted, setIsMuted] = useState(false)
-  const [blobUrl, setBlobUrl] = useState(null)
   const progressRef = useRef(null)
-
-  // Load video as blob - hides direct URL from network tab / source inspection
-  useEffect(() => {
-    let cancelled = false
-    fetch(video.src)
-      .then((res) => res.blob())
-      .then((blob) => {
-        if (!cancelled) {
-          const url = URL.createObjectURL(blob)
-          setBlobUrl(url)
-        }
-      })
-    return () => {
-      cancelled = true
-      if (blobUrl) URL.revokeObjectURL(blobUrl)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [video.src])
 
   // Time update
   useEffect(() => {
@@ -99,21 +81,24 @@ function ProtectedVideo({ video, videoRef, otherRef }) {
       v.removeEventListener('pause', onPause)
       v.removeEventListener('ended', onEnded)
     }
-  }, [videoRef, blobUrl])
+  }, [videoRef, hasStarted])
 
   const togglePlay = useCallback(() => {
-    const v = videoRef.current
-    if (!v) return
-    if (v.paused) {
-      // Pause other video
-      if (otherRef.current && !otherRef.current.paused) {
-        otherRef.current.pause()
+    setHasStarted(true)
+    // Wait a tick for video element to mount if first time
+    setTimeout(() => {
+      const v = videoRef.current
+      if (!v) return
+      if (v.paused) {
+        if (otherRef.current && !otherRef.current.paused) {
+          otherRef.current.pause()
+        }
+        v.play()
+      } else {
+        v.pause()
       }
-      v.play()
-    } else {
-      v.pause()
-    }
-  }, [videoRef, otherRef])
+    }, hasStarted ? 0 : 50)
+  }, [videoRef, otherRef, hasStarted])
 
   const handleProgressClick = (e) => {
     const v = videoRef.current
@@ -168,10 +153,11 @@ function ProtectedVideo({ video, videoRef, otherRef }) {
       className="video-protected-wrapper aspect-video bg-black rounded-xl border border-[#E4E4E4] overflow-hidden shadow-sm"
       onContextMenu={preventContextMenu}
     >
-      {blobUrl ? (
+      {hasStarted ? (
         <video
           ref={videoRef}
-          src={blobUrl}
+          src={video.src}
+          preload="none"
           controlsList="nodownload noremoteplayback"
           disablePictureInPicture
           playsInline
@@ -180,8 +166,11 @@ function ProtectedVideo({ video, videoRef, otherRef }) {
           className="w-full h-full object-contain bg-black"
         />
       ) : (
-        <div className="w-full h-full flex items-center justify-center">
-          <div className="w-8 h-8 border-2 border-[#A65523] border-t-transparent rounded-full animate-spin" />
+        <div className="w-full h-full flex flex-col items-center justify-center gap-3">
+          <svg className="w-16 h-16 text-white/40" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+          <span className="text-white/30 text-sm">Click to play</span>
         </div>
       )}
 
@@ -320,7 +309,7 @@ function App() {
               <span className="text-white font-bold text-lg">A</span>
             </div>
             <h1 className="text-xl md:text-2xl font-semibold text-[#2C2C2C] tracking-tight">
-              Amway Business Verification
+              Amway Business 
             </h1>
           </div>
           <div className="hidden md:flex items-center gap-2 text-sm text-[#A65523] font-medium">
