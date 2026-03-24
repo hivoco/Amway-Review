@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Player</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #000; user-select: none; -webkit-user-select: none; }
+  video { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+  video::-internal-media-controls-download-button { display: none !important; }
+  video::-webkit-media-controls-overflow-button { display: none !important; }
+  .wrapper { position: relative; width: 100%; height: 100%; }
+  .overlay { position: absolute; inset: 0; z-index: 10; cursor: pointer; }
+  .controls {
+    position: absolute; bottom: 0; left: 0; right: 0; z-index: 20;
+    background: linear-gradient(transparent, rgba(0,0,0,0.85));
+    padding: 20px 10px 8px; display: flex; align-items: center; gap: 8px;
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .wrapper:hover .controls { opacity: 1; }
+  .controls button {
+    background: none; border: none; color: #fff; cursor: pointer;
+    padding: 4px; display: flex; align-items: center; opacity: 0.9;
+  }
+  .controls button:hover { opacity: 1; }
+  .progress { flex: 1; height: 4px; background: rgba(255,255,255,0.3); border-radius: 2px; cursor: pointer; }
+  .progress:hover { height: 6px; }
+  .progress-fill { height: 100%; background: #A65523; border-radius: 2px; }
+  .time { color: #fff; font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 75px; text-align: center; font-family: system-ui; }
+  .vol { -webkit-appearance: none; appearance: none; width: 50px; height: 4px; background: rgba(255,255,255,0.3); border-radius: 2px; outline: none; cursor: pointer; }
+  .vol::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: #fff; border-radius: 50%; cursor: pointer; }
+  .play-big {
+    position: absolute; inset: 0; z-index: 15; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 8px; cursor: pointer;
+  }
+  .play-big svg { width: 60px; height: 60px; color: rgba(255,255,255,0.5); }
+  .play-big span { color: rgba(255,255,255,0.3); font-size: 13px; font-family: system-ui; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body oncontextmenu="return false" ondragstart="return false">
+<div class="wrapper" id="wrapper">
+  <video id="vid" preload="none" playsinline controlslist="nodownload noremoteplayback" disablepictureinpicture></video>
+  <div class="play-big" id="bigPlay">
+    <svg fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+    <span>Click to play</span>
+  </div>
+  <div class="overlay" id="overlay"></div>
+  <div class="controls" onclick="event.stopPropagation()">
+    <button id="playBtn" title="Play">
+      <svg id="playIcon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      <svg id="pauseIcon" class="hidden" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+    </button>
+    <div class="progress" id="progress">
+      <div class="progress-fill" id="progressFill" style="width:0%"></div>
+    </div>
+    <span class="time" id="time">0:00 / 0:00</span>
+    <button id="muteBtn" title="Mute">
+      <svg id="volOn" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+      <svg id="volOff" class="hidden" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+    </button>
+    <input type="range" class="vol" id="vol" min="0" max="1" step="0.05" value="1" />
+    <button id="fsBtn" title="Fullscreen">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+    </button>
+  </div>
+</div>
+<script>
+(function(){
+  const params = new URLSearchParams(window.location.search);
+  const src = params.get('src');
+  const videoId = Number(params.get('id')) || 0;
+  if (!src) return;
+
+  const vid = document.getElementById('vid');
+  const overlay = document.getElementById('overlay');
+  const bigPlay = document.getElementById('bigPlay');
+  const playBtn = document.getElementById('playBtn');
+  const playIcon = document.getElementById('playIcon');
+  const pauseIcon = document.getElementById('pauseIcon');
+  const progress = document.getElementById('progress');
+  const progressFill = document.getElementById('progressFill');
+  const timeEl = document.getElementById('time');
+  const muteBtn = document.getElementById('muteBtn');
+  const volOn = document.getElementById('volOn');
+  const volOff = document.getElementById('volOff');
+  const volSlider = document.getElementById('vol');
+  const fsBtn = document.getElementById('fsBtn');
+  const wrapper = document.getElementById('wrapper');
+
+  let started = false;
+
+  function fmt(s) {
+    if (isNaN(s)) return '0:00';
+    return Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2,'0');
+  }
+
+  function toggle() {
+    if (!started) {
+      vid.src = src;
+      started = true;
+      bigPlay.classList.add('hidden');
+      vid.play();
+      return;
+    }
+    vid.paused ? vid.play() : vid.pause();
+  }
+
+  // Listen for pause command from parent
+  window.addEventListener('message', function(e) {
+    if (e.data === 'pause' && vid && !vid.paused) vid.pause();
+  });
+
+  overlay.addEventListener('click', toggle);
+  bigPlay.addEventListener('click', toggle);
+  playBtn.addEventListener('click', toggle);
+
+  overlay.addEventListener('dblclick', function() {
+    document.fullscreenElement ? document.exitFullscreen() : wrapper.requestFullscreen();
+  });
+  fsBtn.addEventListener('click', function() {
+    document.fullscreenElement ? document.exitFullscreen() : wrapper.requestFullscreen();
+  });
+
+  vid.addEventListener('play', function() {
+    playIcon.classList.add('hidden'); pauseIcon.classList.remove('hidden');
+    // Notify parent to pause other videos
+    window.parent.postMessage({ type: 'videoPlaying', id: videoId }, '*');
+  });
+  vid.addEventListener('pause', function() { pauseIcon.classList.add('hidden'); playIcon.classList.remove('hidden'); });
+  vid.addEventListener('ended', function() { pauseIcon.classList.add('hidden'); playIcon.classList.remove('hidden'); });
+
+  vid.addEventListener('timeupdate', function() {
+    if (vid.duration) progressFill.style.width = (vid.currentTime / vid.duration * 100) + '%';
+    timeEl.textContent = fmt(vid.currentTime) + ' / ' + fmt(vid.duration);
+  });
+
+  progress.addEventListener('click', function(e) {
+    var rect = progress.getBoundingClientRect();
+    vid.currentTime = ((e.clientX - rect.left) / rect.width) * vid.duration;
+  });
+
+  muteBtn.addEventListener('click', function() {
+    vid.muted = !vid.muted;
+    volOn.classList.toggle('hidden', vid.muted);
+    volOff.classList.toggle('hidden', !vid.muted);
+  });
+
+  volSlider.addEventListener('input', function() {
+    vid.volume = parseFloat(volSlider.value);
+    vid.muted = vid.volume === 0;
+    volOn.classList.toggle('hidden', vid.muted);
+    volOff.classList.toggle('hidden', !vid.muted);
+  });
+
+  // Block keyboard shortcuts
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey||e.metaKey) && (e.key==='s'||e.key==='u')) e.preventDefault();
+    if (e.key==='F12') e.preventDefault();
+    if ((e.ctrlKey||e.metaKey) && e.shiftKey && 'IJC'.includes(e.key)) e.preventDefault();
+  });
+})();
+</script>
+</body>
+</html>
