@@ -8,6 +8,7 @@ export default defineConfig({
   preview: {
     port: 8827,
     host: '0.0.0.0',
+    allowedHosts: ['node.hivoco.com'],
   },
   server: {
     port: 8827,
